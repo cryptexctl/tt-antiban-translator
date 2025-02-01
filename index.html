@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok AntiBan</title>
+    <script>
+        let translations = {};
+
+        async function loadTranslations() {
+            try {
+                const response = await fetch('cfg.plist');
+                if (!response.ok) {
+                    throw new Error(`Ошибка при загрузке файла: ${response.statusText}`);
+                }
+
+                const xmlString = await response.text();
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlString, "application/xml");
+
+                const strings = xmlDoc.getElementsByTagName('dict');
+                for (let i = 0; i < strings.length; i++) {
+                    const phrase = strings[i].getElementsByTagName('string')[0].textContent;
+                    const replacement = strings[i].getElementsByTagName('string')[1].textContent;
+                    translations[phrase] = replacement;
+                }
+            } catch (error) {
+                console.error("Ошибка при загрузке или парсинге XML: ", error);
+            }
+        }
+
+        function translate(text, translations) {
+            return text.split('').map(char => translations[char] || char).join('');
+        }
+
+        function untranslate(text, translations) {
+            const reverseTranslations = Object.fromEntries(
+                Object.entries(translations).map(([key, value]) => [value, key])
+            );
+
+            return text.split('').map(char => reverseTranslations[char] || char).join('');
+        }
+
+        let isOriginalChanged = false;
+
+        function handleOriginalInput(event) {
+            if (isOriginalChanged) return;
+
+            isOriginalChanged = true;
+            const originalText = event.target.value;
+            const translatedText = translate(originalText, translations);
+            document.getElementById('translated').value = translatedText;
+            adjustHeight(event.target);
+            isOriginalChanged = false;
+        }
+
+        function handleTranslatedInput(event) {
+            if (isOriginalChanged) return;
+
+            isOriginalChanged = true;
+            const translatedText = event.target.value;
+            const originalText = untranslate(translatedText, translations);
+            document.getElementById('original').value = originalText;
+            adjustHeight(event.target);
+            isOriginalChanged = false;
+        }
+
+        function adjustHeight(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+
+        function copyToClipboard() {
+            const textToCopy = document.getElementById('translated').value;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const copyButton = document.getElementById('copy');
+                copyButton.textContent = 'Скопировано!';
+                setTimeout(() => {
+                    copyButton.textContent = 'Скопировать';
+                }, 2000);
+            }).catch(err => {
+                console.error("Ошибка при копировании: ", err);
+            });
+        }
+
+        loadTranslations().then(() => {
+            document.getElementById('original').addEventListener('input', handleOriginalInput);
+            document.getElementById('translated').addEventListener('input', handleTranslatedInput);
+            document.getElementById('copy').addEventListener('click', copyToClipboard);
+        });
+    </script>
+    <style>
+        body {
+            color: #fff;
+            background-color: #121212;
+            font-family: sans-serif;
+            margin: 8px;
+        }
+
+        .textarea {
+            font-size: 18px;
+            font-family: sans-serif;
+            color: #fff;
+            background-color: #313131;
+            margin: 8px;
+            padding: 16px;
+            border-radius: 16px;
+            border: none;
+            outline: none;
+            width: calc(100% - 16px);
+            resize: none;
+            box-sizing: border-box;
+        }
+
+        .textarea::placeholder {
+            color: #777777;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            margin: 8px;
+            padding: 8px;
+        }
+
+        .buttong {
+            background-color: #2E2E2E;
+            color: #ffffff;
+            border: none;
+            padding: 12px 12px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            min-width: 200px;
+            line-height: 22px;
+            min-height: 48px;
+            outline: none;
+            width: calc(100% - 16px);
+            margin: 8px;
+            transition: all 150ms ease;
+        }
+
+        .buttong:active {
+            background-color: #434343;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Обычный текст:</h2>
+    <textarea class="textarea" id="original" placeholder="Добавить комментарий..."></textarea>
+    <h2>Измененный текст:</h2>
+    <textarea class="textarea" id="translated" placeholder="Добавить комментарий..."></textarea>
+    <button class="buttong" id="copy">Скопировать</button>
+    <hr />
+    <h4>TikTok AntiBan <a href="/bio">by @гага</a></h4>
+    <h4>Reload & reversed by  <a href="https://github.com/cryptexctl/tt-antiban-translator">by Lain</a>
+</body>
+
+</html>
